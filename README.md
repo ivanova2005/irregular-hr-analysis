@@ -16,7 +16,18 @@ python -m pip install wfdb tqdm
 # Run plotting
 
 ```
-python3 plot_record.py
+python ./process_all_records.py --limit 20
+Fetching record list from ecg-arrhythmia/WFDBRecords/01/010/...
+Processing 20 records...
+
+Error processing JS00003: 404 Error: Not Found for url: https://physionet.org/files/ecg-arrhythmia/1.0.0/WFDBRecords/01/010/JS00003.hea
+Records: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 20/20 [01:20<00:00,  4.01s/it]
+
+FFT summary saved to: fft_results/fft_summary.csv
+
+--- Summary Statistics ---
+Total records processed: 19
+Total record-channel pairs: 228
 ```
 
 

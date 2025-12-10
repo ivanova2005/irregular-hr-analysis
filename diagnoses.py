@@ -19,7 +19,7 @@ class DiagnosisMapper:
         if csv_path is None:
             # Look for CSV in the same directory as this module
             module_dir = Path(__file__).parent
-            csv_path = module_dir / 'ConditionNames_SNOMED-CT.csv'
+            csv_path = module_dir / 'data/ecg-arrhythmia/ConditionNames_SNOMED-CT.csv'
         
         self.csv_path = Path(csv_path)
         self.diagnoses = {}  # {snomed_code: {'name': str, 'acronym': str}}

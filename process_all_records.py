@@ -55,7 +55,7 @@ def parse_sex_from_comments(comments):
             return 'F'
     return 'U'
 
-def get_record_list_from_physionet(pn_dir='ecg-arrhythmia/WFDBRecords/01/010'):
+def get_record_list_from_physionet(pn_dir='ecg-arrhythmia'):
     """
     Fetch record list from PhysioNet using wfdb.
     Falls back to scanning if remote fetch fails.
@@ -63,7 +63,7 @@ def get_record_list_from_physionet(pn_dir='ecg-arrhythmia/WFDBRecords/01/010'):
     try:
         # Try wfdb's get_record_list
         if hasattr(wfdb, 'get_record_list'):
-            records = wfdb.get_record_list(pn_dir, ['JS00001', 'JS00002', 'JS00003', 'JS00004', 'JS00005','JS00006','JS00007','JS00008','JS00009','JS00010'])
+            records = wfdb.get_record_list(pn_dir, ['JS00001', 'JS00002', 'JS00003', 'JS00004', 'JS00005','JS00006','JS00007','JS00008','JS00009','JS00010','JS00011','JS00012','JS00013','JS00014','JS00015','JS00016','JS00017','JS00018','JS00019','JS00020'])
             return records
     except Exception:
         pass
@@ -161,11 +161,11 @@ def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Process all ECG records from ecg-arrhythmia/WFDBRecords/01/010/'
+        description='Process all ECG records from ecg-arrhythmia'
     )
     parser.add_argument(
         '--pn-dir',
-        default='ecg-arrhythmia/WFDBRecords/01/010',
+        default='ecg-arrhythmia/WFDBRecords/01/010/',
         help='PhysioNet directory (pn_dir for wfdb)',
     )
     parser.add_argument(
