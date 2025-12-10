@@ -1,56 +1,22 @@
 import wfdb
 import numpy as np
 import matplotlib.pyplot as plt
+from diagnoses import extract_diagnoses, DiagnosisMapper
 
 # ---- User-configurable ----
-local_path = 'data/physionet.org/files/meditation/1.0.0/data/'  # not used if reading from PhysioNet
-record_name = 'JS00002'
-database_name = 'ecg-arrhythmia/1.0.0/WFDBRecords/01/010/'  # pn_dir for wfdb
+record_name = 'JS00001'
+database_name = 'ecg-arrhythmia/WFDBRecords/01/010' # pn_dir for wfdb
 sampto = None  # set to an int to limit samples (e.g., 5000); None to load full record
 channel = 0    # zero-based channel index to compute FFT for
 # ---------------------------
 
-def extract_diagnoses(record):
-    """
-    Extract diagnoses from WFDB record comments.
-    
-    The ECG Arrhythmia database stores diagnoses as comma-separated 
-    SNOMED CT codes in a 'Dx:' comment line.
-    
-    Args:
-        record: A wfdb.Record object with comments attribute
-        
-    Returns:
-        dict: {
-            'codes': list of SNOMED CT code strings,
-            'raw': raw Dx comment line (or None if not found)
-        }
-        
-    Example:
-        >>> diagnoses = extract_diagnoses(record)
-        >>> print(diagnoses['codes'])
-        ['164889003', '59118001', '164934002']
-    """
-    diagnoses = {'codes': [], 'raw': None}
-    
-    if not hasattr(record, 'comments') or not record.comments:
-        return diagnoses
-    
-    for comment in record.comments:
-        if comment.startswith('Dx:'):
-            diagnoses['raw'] = comment
-            # Extract codes after 'Dx: '
-            codes_str = comment[4:].strip()
-            # Split by comma and strip whitespace
-            diagnoses['codes'] = [code.strip() for code in codes_str.split(',') if code.strip()]
-            break
-    
-    return diagnoses
-
 print(f'Loading record {record_name} from database {database_name}...')
 # Load header first (optional)
 try:
-    header = wfdb.rdheader(record_name, pn_dir=database_name)
+    header = wfdb.rdheader(
+        record_name, 
+        pn_dir=database_name,
+    )
     print('Header loaded. Sampling frequency (fs):', getattr(header, 'fs', None))
 except Exception as e:
     print('Warning: could not load header from PN dir:', e)
@@ -61,7 +27,12 @@ try:
     if sampto is not None:
         record = wfdb.rdrecord(record_name, pn_dir=database_name, sampto=sampto)
     else:
-        record = wfdb.rdrecord(record_name, pn_dir=database_name)
+        record = wfdb.rdrecord(
+            record_name, 
+            pn_dir=database_name,
+            # m2s=True,  # convert multi-segment to single-segment if needed
+
+        )
 except Exception as e:
     raise RuntimeError(f'Failed to read record: {e}')
 
@@ -74,11 +45,18 @@ if hasattr(record, 'comments'):
         print(' ', comment)
 
 # Extract and display diagnoses
-diagnoses = extract_diagnoses(record)
-if diagnoses['codes']:
-    print(f'Diagnoses (SNOMED CT codes): {", ".join(diagnoses["codes"])}')
-else:
-    print('No diagnoses found in record comments.')
+try:
+    result = extract_diagnoses(record)
+    if result['diagnoses']:
+        print('Diagnoses:')
+        for diag in result['diagnoses']:
+            print(f"  {diag['code']}: {diag['name']} ({diag['acronym']})")
+    elif result['codes']:
+        print(f'Diagnosis codes found but not mapped: {", ".join(result["codes"])}')
+    else:
+        print('No diagnoses found in record comments.')
+except Exception as e:
+    print(f'Error extracting diagnoses: {e}')
 
 # Pick the signal array
 if getattr(record, 'p_signal', None) is not None:
