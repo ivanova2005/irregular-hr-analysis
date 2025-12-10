@@ -10,7 +10,7 @@ source venv/bin/activate
 Install dependencies
 
 ```
-python -m pip install wfdb
+python -m pip install wfdb tqdm
 ```
 
 # Run plotting
