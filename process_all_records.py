@@ -26,6 +26,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from diagnoses import extract_diagnoses, DiagnosisMapper
+from fft_features import FFTFeatureExtractor
 
 # Channel names from ECG standard (12-lead)
 CHANNEL_NAMES = ['I', 'II', 'III', 'aVR', 'aVL', 'aVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
@@ -82,7 +83,7 @@ def get_record_list_from_physionet(pn_dir='ecg-arrhythmia/WFDBRecords/01/010'):
 
 def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
     """
-    Compute and plot FFT for all channels in a record.
+    Compute, plot FFT, and extract comprehensive features for all channels.
     
     Args:
         record: wfdb.Record object
@@ -91,7 +92,7 @@ def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
         num_channels: int, number of channels to process
         
     Returns:
-        dict with FFT metadata per channel
+        list of dicts with per-channel features
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -102,11 +103,11 @@ def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
     elif getattr(record, 'd_signal', None) is not None:
         sig = record.d_signal.astype(np.float64)
     else:
-        return None
+        return []
     
     fs = record.fs
     if fs is None:
-        return None
+        return []
     
     n_samples, n_channels_actual = sig.shape
     num_channels = min(num_channels, n_channels_actual)
@@ -116,7 +117,8 @@ def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
     if num_channels == 1:
         axes = axes.reshape(1, -1)
     
-    fft_stats = {}
+    channel_features_list = []
+    extractor = FFTFeatureExtractor(fs=fs)
     t = np.arange(n_samples) / fs
     
     for ch in range(num_channels):
@@ -129,31 +131,23 @@ def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
         axes[ch, 0].set_title(f'{record_name} - {ch_name} (time domain)')
         axes[ch, 0].grid(True, alpha=0.3)
         
-        # Compute FFT
+        # Compute FFT and features
         X = np.fft.rfft(x * np.hanning(n_samples))
         freqs = np.fft.rfftfreq(n_samples, d=1.0 / fs)
         magnitude = np.abs(X) / n_samples
-        magnitude[1:-1] *= 2  # single-sided spectrum scaling
+        magnitude[1:-1] *= 2
         
-        # FFT plot (log scale for better visibility)
+        # FFT plot
         axes[ch, 1].semilogy(freqs, magnitude, linewidth=0.8, color='C1')
         axes[ch, 1].set_ylabel(f'{ch_name} Magnitude')
         axes[ch, 1].set_title(f'{ch_name} (FFT)')
         axes[ch, 1].set_xlim(0, fs / 2)
         axes[ch, 1].grid(True, alpha=0.3, which='both')
         
-        # Store FFT stats
-        peak_freq_idx = np.argmax(magnitude[1:]) + 1  # skip DC
-        peak_freq = freqs[peak_freq_idx]
-        peak_mag = magnitude[peak_freq_idx]
-        
-        fft_stats[ch_name] = {
-            'channel': ch,
-            'channel_name': ch_name,
-            'peak_freq': float(peak_freq),
-            'peak_magnitude': float(peak_mag),
-            'mean_magnitude': float(np.mean(magnitude[1:])),  # skip DC
-        }
+        # Extract comprehensive features
+        features = extractor.compute_features(x)
+        features['channel'] = ch_name
+        channel_features_list.append(features)
     
     axes[-1, 0].set_xlabel('Time (s)')
     axes[-1, 1].set_xlabel('Frequency (Hz)')
@@ -163,7 +157,7 @@ def plot_fft_all_channels(record, record_name, output_dir, num_channels=12):
     plt.savefig(out_path, dpi=100, bbox_inches='tight')
     plt.close()
     
-    return fft_stats
+    return channel_features_list
 
 def main():
     parser = argparse.ArgumentParser(
@@ -230,23 +224,21 @@ def main():
                 [d['name'] for d in diag_result['diagnoses']]
             ) if diag_result['diagnoses'] else ''
 
-            # Compute and plot FFT for all channels
-            fft_stats = plot_fft_all_channels(record, record_name, output_dir / 'plots')
+            # Compute and plot FFT for all channels with comprehensive features
+            channel_features_list = plot_fft_all_channels(record, record_name, output_dir / 'plots')
 
-            # Aggregate channel-wise FFT stats
-            if fft_stats:
-                for ch_name, stats in fft_stats.items():
+            # Aggregate channel-wise features
+            if channel_features_list:
+                for ch_features in channel_features_list:
                     row = {
                         'record': record_name,
                         'age': age,
                         'sex': sex,
                         'diagnosis_codes': diagnosis_codes,
                         'diagnosis_names': diagnosis_names,
-                        'channel': ch_name,
-                        'peak_freq_hz': stats['peak_freq'],
-                        'peak_magnitude': stats['peak_magnitude'],
-                        'mean_magnitude': stats['mean_magnitude'],
                     }
+                    # Merge all computed features
+                    row.update(ch_features)
                     summary_data.append(row)
 
         except Exception as e:
@@ -263,8 +255,6 @@ def main():
         print('\n--- Summary Statistics ---')
         print(f'Total records processed: {df["record"].nunique()}')
         print(f'Total record-channel pairs: {len(df)}')
-        print('\nPeak frequency stats across all channels:')
-        print(df['peak_freq_hz'].describe())
     else:
         print('No records were successfully processed.')
 

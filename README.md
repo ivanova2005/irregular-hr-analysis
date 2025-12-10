@@ -18,3 +18,16 @@ python -m pip install wfdb
 ```
 python3 plot_record.py
 ```
+
+
+# Key Features Added:
+
+|Feature	|Purpose	|Anomaly Detection Use|
+|-----------|-----------|---------------------|
+|spectral_entropy	|Disorder/complexity	|High values indicate chaotic/noise-like signals|
+|spectral_flatness	|Spectral shape	|Near 1 = noise; << 1 = signal|
+|spectral_irregularity	|Transient detection	|High = abnormal beats/artifacts|
+|time_domain_crest_factor	|Impulsiveness	|High = sharp peaks (arrhythmia indicator)|
+|lf_hf_ratio	|Autonomic balance	|Abnormal ratios indicate stress/disease|
+|spectral_skewness / kurtosis	|Distribution shape	|Detect asymmetric or peaked spectra|
+|VLF_power_ratio, LF_power_ratio, HF_power_ratio	|Frequency band energy	|Band-specific abnormalities|
